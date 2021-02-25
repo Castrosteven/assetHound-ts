@@ -21,16 +21,22 @@ interface BiosInfo {
 interface AdapaterInfo {
   name: string;
   description: string;
+  IPAddress: string | Array<string>;
   mac: string;
   manufacturer: string;
   adapter: string;
 }
-
+interface HostInfo {
+  ip: string;
+  mac: string;
+  dnsName: string;
+}
 interface Scanner {
+  hostInfo(): Promise<HostInfo | string>;
   getBios(): Promise<BiosInfo | string>;
   getHw(): Promise<HwInfo | string>;
   getOs(): Promise<OsInfo | string>;
-  getNetworkAdpaterInfo(): Promise<AdapaterInfo | string>;
+  getNetworkAdpaterInfo(): Promise<AdapaterInfo | any>;
   wmiObject(sub_class: string, host: string): Promise<object | string>;
 }
 
@@ -38,6 +44,47 @@ const scanner = class implements Scanner {
   host: string;
   constructor(host: string) {
     this.host = host;
+  }
+
+  async hostInfo(): Promise<HostInfo | string> {
+    const getHost = spawn("powershell.exe", [
+      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`
+    ]);
+    let data = "";
+    for await (const chunk of getHost.stdout) {
+      // console.log("stdout chunk: " + chunk);
+      data += chunk;
+    }
+    let error = "";
+    for await (const chunk of getHost.stderr) {
+      // console.error("stderr chunk: " + chunk);
+      error += chunk;
+    }
+    const exitCode = await new Promise((resolve, reject) => {
+      getHost.on("close", resolve);
+    });
+
+    if (exitCode) {
+      return `Error code : ${exitCode}`;
+    }
+
+    const adapaters = await this.getNetworkAdpaterInfo().then((res) => {
+      return res;
+    });
+
+    const hostMac = adapaters.filter((adapter: any) => {
+      const macs = adapter.IPAddress;
+      return macs != null;
+    });
+    const a = hostMac.filter((a: any) => {
+      return a.IPAddress.includes(`${this.host}`);
+    });
+
+    return {
+      ip: this.host,
+      dnsName: data,
+      mac: a[0].mac
+    };
   }
 
   async wmiObject(sub_class: string, host: string) {
@@ -112,13 +159,17 @@ const scanner = class implements Scanner {
       }
     );
   }
-  async getNetworkAdpaterInfo(): Promise<AdapaterInfo | string> {
-    return await this.wmiObject("win32_NetworkAdapter", this.host).then(
+  async getNetworkAdpaterInfo(): Promise<AdapaterInfo | any> {
+    return await this.wmiObject(
+      "win32_NetworkAdapterConfiguration",
+      this.host
+    ).then(
       (data) => {
         const response = data.map((adapter: any) => {
           return {
             name: adapter.Name,
             description: adapter.Description,
+            IPAddress: adapter.IPAddress,
             mac: adapter.MACAddress,
             manufacturer: adapter.Manufacturer,
             adapter: adapter.NetConnectionID
