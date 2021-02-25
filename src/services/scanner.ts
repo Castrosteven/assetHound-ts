@@ -9,7 +9,7 @@ interface OsInfo {
 }
 
 interface Scanner {
-  getOs(): Promise<OsInfo>;
+  getOs(): Promise<OsInfo | string>;
 }
 
 const scanner = class implements Scanner {
@@ -18,9 +18,9 @@ const scanner = class implements Scanner {
     this.host = host;
   }
 
-  async getOs(): Promise<OsInfo> {
+  async getOs(): Promise<OsInfo | string> {
     const win32_os = spawn("powershell.exe", [
-      `Get-WMIObject -ComputerName ${this.host}  win32_operatingsystem  | ConvertTo-Json`
+      `Get-WMIObject -ComputerName ${this.host} win32_operatingsystem  | ConvertTo-Json`
     ]);
     let data: string = "";
     for await (const chunk of win32_os.stdout) {
@@ -36,11 +36,15 @@ const scanner = class implements Scanner {
     const exitCode = await new Promise((resolve, reject) => {
       win32_os.on("close", resolve);
     });
+    let response;
     if (exitCode) {
-      console.log(error);
+      if (exitCode == 1) {
+        return (response = "RPC Server is unavailable");
+      }
     }
+
     const dataObj = JSON.parse(data);
-    const response = {
+    response = {
       Name: dataObj.Caption,
       Version: dataObj.Version,
       BuildNumber: dataObj.BuildNumber,
