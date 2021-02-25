@@ -41,8 +41,8 @@ interface Scanner {
 }
 
 const scanner = class implements Scanner {
-  host: string;
-  constructor(host: string) {
+  host: any;
+  constructor(host: any) {
     this.host = host;
   }
 
@@ -82,7 +82,7 @@ const scanner = class implements Scanner {
 
     return {
       ip: this.host,
-      dnsName: data,
+      dnsName: data.replace(/(\r\n|\n|\r)/gm, ""),
       mac: a[0].mac
     };
   }
@@ -113,7 +113,6 @@ const scanner = class implements Scanner {
     return JSON.parse(data);
   }
   async getOs(): Promise<OsInfo | string> {
-    console.log(this.host);
     return await this.wmiObject("win32_operatingsystem", this.host).then(
       (data) => {
         const response = {
