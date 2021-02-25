@@ -30,7 +30,7 @@ interface Scanner {
   getBios(): Promise<BiosInfo | string>;
   getHw(): Promise<HwInfo | string>;
   getOs(): Promise<OsInfo | string>;
-  getNetworkAdpaterInfo(): Promise<object | string>;
+  getNetworkAdpaterInfo(): Promise<AdapaterInfo | string>;
   wmiObject(sub_class: string, host: string): Promise<object | string>;
 }
 
@@ -66,6 +66,7 @@ const scanner = class implements Scanner {
     return JSON.parse(data);
   }
   async getOs(): Promise<OsInfo | string> {
+    console.log(this.host);
     return await this.wmiObject("win32_operatingsystem", this.host).then(
       (data) => {
         const response = {
