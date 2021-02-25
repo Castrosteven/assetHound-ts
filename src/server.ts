@@ -14,9 +14,31 @@ app.listen(PORT, () => {
 });
 
 //Return OS Information
+// Object || string
 app.get("/computer/os", async (req, res) => {
   const ip = req.ip.replace("::ffff:", "");
   const Scanner = new scanner(ip);
   const osInfo = await Scanner.getOs();
   res.send(osInfo);
+});
+
+app.get("/computer/hw", async (req, res) => {
+  const ip = req.ip.replace("::ffff:", "");
+  const Scanner = new scanner(ip);
+  const hwInfo = await Scanner.getHw();
+  res.send(hwInfo);
+});
+
+app.get("/computer/bios", async (req, res) => {
+  const ip = req.ip.replace("::ffff:", "");
+  const Scanner = new scanner(ip);
+  const biosInfo = await Scanner.getBios();
+  res.send(biosInfo);
+});
+
+app.get("/computer/net", async (req, res) => {
+  const ip = req.ip.replace("::ffff:", "");
+  const Scanner = new scanner(ip);
+  const networkInfo = await Scanner.getNetworkAdpaterInfo();
+  res.send(networkInfo);
 });
