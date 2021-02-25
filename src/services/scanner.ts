@@ -86,7 +86,32 @@ const scanner = class implements Scanner {
       mac: a[0].mac
     };
   }
+  async resolveHostname() {
+    // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
 
+    const getHost = spawn("powershell.exe", [
+      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`,
+    ]);
+    let data = "";
+    for await (const chunk of getHost.stdout) {
+      // console.log("stdout chunk: " + chunk);
+      data += chunk;
+    }
+    let error = "";
+    for await (const chunk of getHost.stderr) {
+      // console.error("stderr chunk: " + chunk);
+      error += chunk;
+    }
+    const exitCode = await new Promise((resolve, reject) => {
+      getHost.on("close", resolve);
+    });
+
+    if (exitCode) {
+      // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
+      return "unknown";
+    }
+    return data;
+  } 
   async wmiObject(sub_class: string, host: string) {
     const child = spawn("powershell.exe", [
       `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`
