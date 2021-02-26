@@ -22,15 +22,14 @@ app.listen(PORT, () => {
 
 //root endpoint
 app.get("/", async (req, res) => {
-  const remoteIP = req.ip.replace("::ffff:", "");
-  console.log(remoteIP);
-  const Scanner = new scanner(remoteIP);
+  const host = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;  
+  const Scanner = new scanner(host);
   const rcpStatus = await Scanner.checkRcp();
   const hostname = await Scanner.resolveHostname();
-
+  const ip = await Scanner.resolveIpAddress()
   const result = {
-    ip: remoteIP,
-    hostname: hostname.replace(/(\r\n|\n|\r)/gm, ""),
+    ip: ip,
+    hostname: hostname.replace(/\r?\n?/g, ''),
     rcpStatus: rcpStatus
   };
   res.send(result);

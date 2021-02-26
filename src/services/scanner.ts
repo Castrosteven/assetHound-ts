@@ -48,7 +48,7 @@ const scanner = class implements Scanner {
   }
   async checkRcp() {
     const check = spawn("powershell.exe", [
-      `Test-NetConnection -ComputerName ${this.host} -port 135 | ConvertTo-Json`
+      `Test-NetConnection -ComputerName ${this.host} -port 135 -WarningAction silentlyContinue | ConvertTo-Json `
     ]);
     let data = "";
     for await (const chunk of check.stdout) {
@@ -68,7 +68,7 @@ const scanner = class implements Scanner {
       return false;
     }
     const result = JSON.parse(data).TcpTestSucceeded;
-    return result;
+    return result
   }
   async hostInfo(): Promise<HostInfo | string> {
     const getHost = spawn("powershell.exe", [
@@ -111,10 +111,8 @@ const scanner = class implements Scanner {
     };
   }
   async resolveHostname() {
-    // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
-
     const getHost = spawn("powershell.exe", [
-      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`
+      `Resolve-DnsName -Name ${this.host} | ConvertTo-Json`
     ]);
     let data = "";
     for await (const chunk of getHost.stdout) {
@@ -134,7 +132,36 @@ const scanner = class implements Scanner {
       // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
       return "unknown";
     }
-    return data;
+    const response = JSON.parse(data)
+
+    return response.NameHost ? response.NameHost : response.Name
+  }
+  async resolveIpAddress() {
+    // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
+
+    const getHost = spawn("powershell.exe", [
+      `[System.Net.Dns]::GetHostAddresses('${this.host}') | ConvertTo-Json`
+    ]);
+    let data = "";
+    for await (const chunk of getHost.stdout) {
+      // console.log("stdout chunk: " + chunk);
+      data += chunk;
+    }
+    let error = "";
+    for await (const chunk of getHost.stderr) {
+      // console.error("stderr chunk: " + chunk);
+      error += chunk;
+    }
+    const exitCode = await new Promise((resolve, reject) => {
+      getHost.on("close", resolve);
+    });
+
+    if (exitCode) {
+      // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
+      return "unknown";
+    }
+  
+    return JSON.parse(data).IPAddressToString;
   }
   async wmiObject(sub_class: string, host: string) {
     const child = spawn("powershell.exe", [
