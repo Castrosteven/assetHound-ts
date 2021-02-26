@@ -48,7 +48,7 @@ const scanner = class implements Scanner {
   }
   async checkRcp() {
     const check = spawn("powershell.exe", [
-      `Test-NetConnection -ComputerName ${this.host} -port 135 -WarningAction silentlyContinue | ConvertTo-Json `
+      `Test-NetConnection -ComputerName ${this.host} -port 135 -WarningAction silentlyContinue | ConvertTo-Json `,
     ]);
     let data = "";
     for await (const chunk of check.stdout) {
@@ -68,11 +68,11 @@ const scanner = class implements Scanner {
       return false;
     }
     const result = JSON.parse(data).TcpTestSucceeded;
-    return result
+    return result;
   }
   async hostInfo(): Promise<HostInfo | string> {
     const getHost = spawn("powershell.exe", [
-      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`
+      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`,
     ]);
     let data = "";
     for await (const chunk of getHost.stdout) {
@@ -107,12 +107,12 @@ const scanner = class implements Scanner {
     return {
       ip: this.host,
       dnsName: data.replace(/(\r\n|\n|\r)/gm, ""),
-      mac: a[0].mac
+      mac: a[0].mac,
     };
   }
   async resolveHostname() {
     const getHost = spawn("powershell.exe", [
-      `Resolve-DnsName -Name ${this.host} | ConvertTo-Json`
+      `Resolve-DnsName -Name ${this.host} | ConvertTo-Json`,
     ]);
     let data = "";
     for await (const chunk of getHost.stdout) {
@@ -132,15 +132,15 @@ const scanner = class implements Scanner {
       // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
       return "unknown";
     }
-    const response = JSON.parse(data)
+    const response = JSON.parse(data);
 
-    return response.NameHost ? response.NameHost : response.Name
+    return response.NameHost ? response.NameHost : response.Name;
   }
   async resolveIpAddress() {
     // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
 
     const getHost = spawn("powershell.exe", [
-      `[System.Net.Dns]::GetHostAddresses('${this.host}') | ConvertTo-Json`
+      `[System.Net.Dns]::GetHostAddresses('${this.host}') | ConvertTo-Json`,
     ]);
     let data = "";
     for await (const chunk of getHost.stdout) {
@@ -160,12 +160,12 @@ const scanner = class implements Scanner {
       // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
       return "unknown";
     }
-  
+
     return JSON.parse(data).IPAddressToString;
   }
   async wmiObject(sub_class: string, host: string) {
     const child = spawn("powershell.exe", [
-      `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`
+      `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`,
     ]);
     let data: string = "";
     for await (const chunk of child.stdout) {
@@ -196,7 +196,7 @@ const scanner = class implements Scanner {
           Version: data.Version,
           BuildNumber: data.BuildNumber,
           OSArchitecture: data.OSArchitecture,
-          Manufacturer: data.Manufacturer
+          Manufacturer: data.Manufacturer,
         };
         return response;
       },
@@ -212,7 +212,7 @@ const scanner = class implements Scanner {
           Name: data.Caption,
           Domain: data.Domain,
           Manufacturer: data.Manufacturer,
-          Model: data.Model
+          Model: data.Model,
         };
         return response;
       },
@@ -225,7 +225,7 @@ const scanner = class implements Scanner {
     return await this.wmiObject("win32_bios", this.host).then(
       (data) => {
         const response = {
-          SerialNumber: data.SerialNumber
+          SerialNumber: data.SerialNumber,
         };
         return response;
       },
@@ -247,7 +247,7 @@ const scanner = class implements Scanner {
             IPAddress: adapter.IPAddress,
             mac: adapter.MACAddress,
             manufacturer: adapter.Manufacturer,
-            adapter: adapter.NetConnectionID
+            adapter: adapter.NetConnectionID,
           };
         });
         return response;
@@ -256,6 +256,21 @@ const scanner = class implements Scanner {
         return `rpc server is unavailable ${error}`;
       }
     );
+  }
+  async allInfo() {
+    const hostInfo = await this.hostInfo();
+    const osInfo = await this.getOs();
+    const hwInfo = await this.getHw();
+    const biosInfo = await this.getBios();
+    const networkInfo = await this.getNetworkAdpaterInfo();
+    const response = {
+      hostInfo: hostInfo,
+      osInfo: osInfo,
+      hwInfo: hwInfo,
+      biosInfo: biosInfo,
+      networkInfo: networkInfo,
+    };
+    return response;
   }
 };
 

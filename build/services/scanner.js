@@ -21,15 +21,15 @@ const scanner = class {
     constructor(host) {
         this.host = host;
     }
-    hostInfo() {
+    checkRcp() {
         var e_1, _a, e_2, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            const getHost = child_process_1.spawn("powershell.exe", [
-                `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`
+            const check = child_process_1.spawn("powershell.exe", [
+                `Test-NetConnection -ComputerName ${this.host} -port 135 -WarningAction silentlyContinue | ConvertTo-Json `,
             ]);
             let data = "";
             try {
-                for (var _c = __asyncValues(getHost.stdout), _d; _d = yield _c.next(), !_d.done;) {
+                for (var _c = __asyncValues(check.stdout), _d; _d = yield _c.next(), !_d.done;) {
                     const chunk = _d.value;
                     // console.log("stdout chunk: " + chunk);
                     data += chunk;
@@ -44,7 +44,7 @@ const scanner = class {
             }
             let error = "";
             try {
-                for (var _e = __asyncValues(getHost.stderr), _f; _f = yield _e.next(), !_f.done;) {
+                for (var _e = __asyncValues(check.stderr), _f; _f = yield _e.next(), !_f.done;) {
                     const chunk = _f.value;
                     // console.error("stderr chunk: " + chunk);
                     error += chunk;
@@ -58,32 +58,18 @@ const scanner = class {
                 finally { if (e_2) throw e_2.error; }
             }
             const exitCode = yield new Promise((resolve, reject) => {
-                getHost.on("close", resolve);
+                check.on("close", resolve);
             });
             if (exitCode) {
-                return `Error code : ${exitCode}`;
+                return false;
             }
-            const adapaters = yield this.getNetworkAdpaterInfo().then((res) => {
-                return res;
-            });
-            const hostMac = adapaters.filter((adapter) => {
-                const macs = adapter.IPAddress;
-                return macs != null;
-            });
-            const a = hostMac.filter((a) => {
-                return a.IPAddress.includes(`${this.host}`);
-            });
-            return {
-                ip: this.host,
-                dnsName: data.replace(/(\r\n|\n|\r)/gm, ""),
-                mac: a[0].mac
-            };
+            const result = JSON.parse(data).TcpTestSucceeded;
+            return result;
         });
     }
-    resolveHostname() {
+    hostInfo() {
         var e_3, _a, e_4, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
             const getHost = child_process_1.spawn("powershell.exe", [
                 `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`,
             ]);
@@ -121,21 +107,34 @@ const scanner = class {
                 getHost.on("close", resolve);
             });
             if (exitCode) {
-                // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
-                return "unknown";
+                return `Error code : ${exitCode}`;
             }
-            return data;
+            const adapaters = yield this.getNetworkAdpaterInfo().then((res) => {
+                return res;
+            });
+            const hostMac = adapaters.filter((adapter) => {
+                const macs = adapter.IPAddress;
+                return macs != null;
+            });
+            const a = hostMac.filter((a) => {
+                return a.IPAddress.includes(`${this.host}`);
+            });
+            return {
+                ip: this.host,
+                dnsName: data.replace(/(\r\n|\n|\r)/gm, ""),
+                mac: a[0].mac,
+            };
         });
     }
-    wmiObject(sub_class, host) {
+    resolveHostname() {
         var e_5, _a, e_6, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            const child = child_process_1.spawn("powershell.exe", [
-                `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`
+            const getHost = child_process_1.spawn("powershell.exe", [
+                `Resolve-DnsName -Name ${this.host} | ConvertTo-Json`,
             ]);
             let data = "";
             try {
-                for (var _c = __asyncValues(child.stdout), _d; _d = yield _c.next(), !_d.done;) {
+                for (var _c = __asyncValues(getHost.stdout), _d; _d = yield _c.next(), !_d.done;) {
                     const chunk = _d.value;
                     // console.log("stdout chunk: " + chunk);
                     data += chunk;
@@ -150,7 +149,7 @@ const scanner = class {
             }
             let error = "";
             try {
-                for (var _e = __asyncValues(child.stderr), _f; _f = yield _e.next(), !_f.done;) {
+                for (var _e = __asyncValues(getHost.stderr), _f; _f = yield _e.next(), !_f.done;) {
                     const chunk = _f.value;
                     // console.error("stderr chunk: " + chunk);
                     error += chunk;
@@ -162,6 +161,100 @@ const scanner = class {
                     if (_f && !_f.done && (_b = _e.return)) yield _b.call(_e);
                 }
                 finally { if (e_6) throw e_6.error; }
+            }
+            const exitCode = yield new Promise((resolve, reject) => {
+                getHost.on("close", resolve);
+            });
+            if (exitCode) {
+                // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
+                return "unknown";
+            }
+            const response = JSON.parse(data);
+            return response.NameHost ? response.NameHost : response.Name;
+        });
+    }
+    resolveIpAddress() {
+        var e_7, _a, e_8, _b;
+        return __awaiter(this, void 0, void 0, function* () {
+            // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
+            const getHost = child_process_1.spawn("powershell.exe", [
+                `[System.Net.Dns]::GetHostAddresses('${this.host}') | ConvertTo-Json`,
+            ]);
+            let data = "";
+            try {
+                for (var _c = __asyncValues(getHost.stdout), _d; _d = yield _c.next(), !_d.done;) {
+                    const chunk = _d.value;
+                    // console.log("stdout chunk: " + chunk);
+                    data += chunk;
+                }
+            }
+            catch (e_7_1) { e_7 = { error: e_7_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+                }
+                finally { if (e_7) throw e_7.error; }
+            }
+            let error = "";
+            try {
+                for (var _e = __asyncValues(getHost.stderr), _f; _f = yield _e.next(), !_f.done;) {
+                    const chunk = _f.value;
+                    // console.error("stderr chunk: " + chunk);
+                    error += chunk;
+                }
+            }
+            catch (e_8_1) { e_8 = { error: e_8_1 }; }
+            finally {
+                try {
+                    if (_f && !_f.done && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_8) throw e_8.error; }
+            }
+            const exitCode = yield new Promise((resolve, reject) => {
+                getHost.on("close", resolve);
+            });
+            if (exitCode) {
+                // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
+                return "unknown";
+            }
+            return JSON.parse(data).IPAddressToString;
+        });
+    }
+    wmiObject(sub_class, host) {
+        var e_9, _a, e_10, _b;
+        return __awaiter(this, void 0, void 0, function* () {
+            const child = child_process_1.spawn("powershell.exe", [
+                `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`,
+            ]);
+            let data = "";
+            try {
+                for (var _c = __asyncValues(child.stdout), _d; _d = yield _c.next(), !_d.done;) {
+                    const chunk = _d.value;
+                    // console.log("stdout chunk: " + chunk);
+                    data += chunk;
+                }
+            }
+            catch (e_9_1) { e_9 = { error: e_9_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+                }
+                finally { if (e_9) throw e_9.error; }
+            }
+            let error = "";
+            try {
+                for (var _e = __asyncValues(child.stderr), _f; _f = yield _e.next(), !_f.done;) {
+                    const chunk = _f.value;
+                    // console.error("stderr chunk: " + chunk);
+                    error += chunk;
+                }
+            }
+            catch (e_10_1) { e_10 = { error: e_10_1 }; }
+            finally {
+                try {
+                    if (_f && !_f.done && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_10) throw e_10.error; }
             }
             const exitCode = yield new Promise((resolve, reject) => {
                 child.on("close", resolve);
@@ -180,7 +273,7 @@ const scanner = class {
                     Version: data.Version,
                     BuildNumber: data.BuildNumber,
                     OSArchitecture: data.OSArchitecture,
-                    Manufacturer: data.Manufacturer
+                    Manufacturer: data.Manufacturer,
                 };
                 return response;
             }, (error) => {
@@ -195,7 +288,7 @@ const scanner = class {
                     Name: data.Caption,
                     Domain: data.Domain,
                     Manufacturer: data.Manufacturer,
-                    Model: data.Model
+                    Model: data.Model,
                 };
                 return response;
             }, (error) => {
@@ -207,7 +300,7 @@ const scanner = class {
         return __awaiter(this, void 0, void 0, function* () {
             return yield this.wmiObject("win32_bios", this.host).then((data) => {
                 const response = {
-                    SerialNumber: data.SerialNumber
+                    SerialNumber: data.SerialNumber,
                 };
                 return response;
             }, (error) => {
@@ -225,13 +318,30 @@ const scanner = class {
                         IPAddress: adapter.IPAddress,
                         mac: adapter.MACAddress,
                         manufacturer: adapter.Manufacturer,
-                        adapter: adapter.NetConnectionID
+                        adapter: adapter.NetConnectionID,
                     };
                 });
                 return response;
             }, (error) => {
                 return `rpc server is unavailable ${error}`;
             });
+        });
+    }
+    allInfo() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const hostInfo = yield this.hostInfo();
+            const osInfo = yield this.getOs();
+            const hwInfo = yield this.getHw();
+            const biosInfo = yield this.getBios();
+            const networkInfo = yield this.getNetworkAdpaterInfo();
+            const response = {
+                hostInfo: hostInfo,
+                osInfo: osInfo,
+                hwInfo: hwInfo,
+                biosInfo: biosInfo,
+                networkInfo: networkInfo,
+            };
+            return response;
         });
     }
 };

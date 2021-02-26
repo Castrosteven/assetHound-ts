@@ -15,27 +15,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const computerRoutes_1 = __importDefault(require("./routes/computerRoutes"));
 const scanner_1 = __importDefault(require("./services/scanner"));
+const cors = require("cors");
 const app = express_1.default();
 const PORT = 4000;
+app.use(cors());
+// CORS
 app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
+//
 app.set("trust proxy", true);
 app.listen(PORT, () => {
     console.log(`⚡️[server]: Server is running at https://localhost:${PORT}`);
 });
 //root endpoint
 app.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const remoteAddress = req.ip;
-    const array = remoteAddress.split(":");
-    const remoteIP = array[array.length - 1];
-    const Scanner = new scanner_1.default(remoteIP);
+    const host = Object.keys(req.query).length === 0
+        ? req.ip.replace("::ffff:", "")
+        : req.query.host;
+    const Scanner = new scanner_1.default(host);
+    const rcpStatus = yield Scanner.checkRcp();
     const hostname = yield Scanner.resolveHostname();
+    const ip = yield Scanner.resolveIpAddress();
     const result = {
-        ip: remoteIP,
-        hostname: hostname,
+        ip: ip,
+        hostname: hostname.replace(/\r?\n?/g, ""),
+        rcpStatus: rcpStatus,
     };
     res.send(result);
 }));
