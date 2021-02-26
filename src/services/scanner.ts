@@ -38,6 +38,7 @@ interface Scanner {
   getOs(): Promise<OsInfo | string>;
   getNetworkAdpaterInfo(): Promise<AdapaterInfo | any>;
   wmiObject(sub_class: string, host: string): Promise<object | string>;
+  checkRcp(): Promise<boolean>;
 }
 
 const scanner = class implements Scanner {
@@ -45,7 +46,30 @@ const scanner = class implements Scanner {
   constructor(host: any) {
     this.host = host;
   }
+  async checkRcp() {
+    const check = spawn("powershell.exe", [
+      `Test-NetConnection -ComputerName ${this.host} -port 135 | ConvertTo-Json`
+    ]);
+    let data = "";
+    for await (const chunk of check.stdout) {
+      // console.log("stdout chunk: " + chunk);
+      data += chunk;
+    }
+    let error = "";
+    for await (const chunk of check.stderr) {
+      // console.error("stderr chunk: " + chunk);
+      error += chunk;
+    }
+    const exitCode = await new Promise((resolve, reject) => {
+      check.on("close", resolve);
+    });
 
+    if (exitCode) {
+      return false;
+    }
+    const result = JSON.parse(data).TcpTestSucceeded;
+    return result;
+  }
   async hostInfo(): Promise<HostInfo | string> {
     const getHost = spawn("powershell.exe", [
       `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`
@@ -90,7 +114,7 @@ const scanner = class implements Scanner {
     // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
 
     const getHost = spawn("powershell.exe", [
-      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`,
+      `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`
     ]);
     let data = "";
     for await (const chunk of getHost.stdout) {
@@ -111,7 +135,7 @@ const scanner = class implements Scanner {
       return "unknown";
     }
     return data;
-  } 
+  }
   async wmiObject(sub_class: string, host: string) {
     const child = spawn("powershell.exe", [
       `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`

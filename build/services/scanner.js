@@ -80,15 +80,16 @@ const scanner = class {
             };
         });
     }
-    wmiObject(sub_class, host) {
+    resolveHostname() {
         var e_3, _a, e_4, _b;
         return __awaiter(this, void 0, void 0, function* () {
-            const child = child_process_1.spawn("powershell.exe", [
-                `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`
+            // [System.Net.Dns]::GetHostByAddress('140.251.72.25').HostName
+            const getHost = child_process_1.spawn("powershell.exe", [
+                `[System.Net.Dns]::GetHostByAddress('${this.host}').HostName`,
             ]);
             let data = "";
             try {
-                for (var _c = __asyncValues(child.stdout), _d; _d = yield _c.next(), !_d.done;) {
+                for (var _c = __asyncValues(getHost.stdout), _d; _d = yield _c.next(), !_d.done;) {
                     const chunk = _d.value;
                     // console.log("stdout chunk: " + chunk);
                     data += chunk;
@@ -103,7 +104,7 @@ const scanner = class {
             }
             let error = "";
             try {
-                for (var _e = __asyncValues(child.stderr), _f; _f = yield _e.next(), !_f.done;) {
+                for (var _e = __asyncValues(getHost.stderr), _f; _f = yield _e.next(), !_f.done;) {
                     const chunk = _f.value;
                     // console.error("stderr chunk: " + chunk);
                     error += chunk;
@@ -115,6 +116,52 @@ const scanner = class {
                     if (_f && !_f.done && (_b = _e.return)) yield _b.call(_e);
                 }
                 finally { if (e_4) throw e_4.error; }
+            }
+            const exitCode = yield new Promise((resolve, reject) => {
+                getHost.on("close", resolve);
+            });
+            if (exitCode) {
+                // throw new Error(`subprocess error exit ${exitCode}, ${error}`);
+                return "unknown";
+            }
+            return data;
+        });
+    }
+    wmiObject(sub_class, host) {
+        var e_5, _a, e_6, _b;
+        return __awaiter(this, void 0, void 0, function* () {
+            const child = child_process_1.spawn("powershell.exe", [
+                `Get-WMIObject -ComputerName ${host} ${sub_class} | ConvertTo-Json`
+            ]);
+            let data = "";
+            try {
+                for (var _c = __asyncValues(child.stdout), _d; _d = yield _c.next(), !_d.done;) {
+                    const chunk = _d.value;
+                    // console.log("stdout chunk: " + chunk);
+                    data += chunk;
+                }
+            }
+            catch (e_5_1) { e_5 = { error: e_5_1 }; }
+            finally {
+                try {
+                    if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+                }
+                finally { if (e_5) throw e_5.error; }
+            }
+            let error = "";
+            try {
+                for (var _e = __asyncValues(child.stderr), _f; _f = yield _e.next(), !_f.done;) {
+                    const chunk = _f.value;
+                    // console.error("stderr chunk: " + chunk);
+                    error += chunk;
+                }
+            }
+            catch (e_6_1) { e_6 = { error: e_6_1 }; }
+            finally {
+                try {
+                    if (_f && !_f.done && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_6) throw e_6.error; }
             }
             const exitCode = yield new Promise((resolve, reject) => {
                 child.on("close", resolve);

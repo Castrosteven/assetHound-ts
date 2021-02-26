@@ -16,7 +16,7 @@ const express_1 = __importDefault(require("express"));
 const scanner_1 = __importDefault(require("../services/scanner"));
 const router = express_1.default.Router();
 router.get("/computer", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const ip = req.query == null ? req.ip.replace("::ffff:", "") : req.query.host;
+    const ip = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;
     const Scanner = new scanner_1.default(ip);
     const hostInfo = yield Scanner.hostInfo();
     const osInfo = yield Scanner.getOs();
@@ -35,33 +35,45 @@ router.get("/computer", (req, res) => __awaiter(void 0, void 0, void 0, function
     res.send(response);
 }));
 router.get("/computer/os", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const ip = req.query == null ? req.ip.replace("::ffff:", "") : req.query.host;
+    const ip = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;
     const Scanner = new scanner_1.default(ip);
     const osInfo = yield Scanner.getOs();
     res.send(osInfo);
 }));
 router.get("/computer/host", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const ip = req.query == null ? req.ip.replace("::ffff:", "") : req.query.host;
+    const ip = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;
     const Scanner = new scanner_1.default(ip);
     const hostInfo = yield Scanner.hostInfo();
     res.send(hostInfo);
 }));
 router.get("/computer/hw", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const ip = req.query == null ? req.ip.replace("::ffff:", "") : req.query.host;
+    const ip = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;
     const Scanner = new scanner_1.default(ip);
     const hwInfo = yield Scanner.getHw();
     res.send(hwInfo);
 }));
 router.get("/computer/bios", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const ip = req.query == null ? req.ip.replace("::ffff:", "") : req.query.host;
+    const ip = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;
     const Scanner = new scanner_1.default(ip);
     const biosInfo = yield Scanner.getBios();
     res.send(biosInfo);
 }));
 router.get("/computer/net", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const ip = req.query == null ? req.ip.replace("::ffff:", "") : req.query.host;
+    const ip = Object.keys(req.query).length === 0 ? req.ip.replace("::ffff:", "") : req.query.host;
     const Scanner = new scanner_1.default(ip);
     const networkInfo = yield Scanner.getNetworkAdpaterInfo();
     res.send(networkInfo);
 }));
+// router.post("computer/register", async (req, res) => {
+//   const remoteAddress = req.ip;
+//   const array = remoteAddress.split(":");
+//   const remoteIP = array[array.length - 1];
+//   const host = {
+//     ip: remoteIP,
+//     cwid: req.body.cwid,
+//   };
+//   const response = await application(host);
+//   console.log(host);
+//   res.send(response);
+// });
 exports.default = router;
